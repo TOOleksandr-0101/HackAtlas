@@ -7,14 +7,15 @@ export const difficultyLabels: Record<ChallengeDifficulty, string> = {
   advanced: "Advanced",
 };
 
-export function ChallengeCard({ challenge }: { challenge: Challenge }) {
+export function ChallengeCard({ challenge, recommended = false }: { challenge: Challenge; recommended?: boolean }) {
   return (
-    <article className="card challenge-card">
+    <article className={`card challenge-card${recommended ? " challenge-card--recommended" : ""}`}>
       <div className="challenge-card__meta">
         <span className={`difficulty difficulty--${challenge.difficulty}`}>
           {difficultyLabels[challenge.difficulty]}
         </span>
         <span>{challenge.estimatedMinutes} min</span>
+        {recommended && <span className="challenge-card__recommendation">Recommended practice</span>}
       </div>
       <div>
         <p className="challenge-card__category">{challenge.category}</p>

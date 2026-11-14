@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
@@ -155,6 +155,26 @@ describe('functional frontend', () => {
     const latestScore = screen.getByText('Latest score').parentElement
     if (!latestScore) throw new Error('Latest score metric was not rendered.')
     expect(within(latestScore).getByText('59/100')).toBeTruthy()
+
+    expect(screen.getByRole('heading', { name: 'Your learning path' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Problem Understanding', level: 3 })).toBeTruthy()
+    const learningProgress = screen.getByRole('progressbar', {
+      name: 'Problem Understanding: 10 out of 20 average',
+    }) as HTMLProgressElement
+    expect(learningProgress.value).toBe(10)
+    expect(learningProgress.max).toBe(20)
+    expect(screen.getByRole('heading', { name: 'Map the problem moment', level: 3 })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Skill scores' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Recent attempts' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Revision history' })).toBeTruthy()
+
+    const practiceLink = screen.getByRole('link', { name: 'Practice this skill' })
+    expect(practiceLink.getAttribute('href')).toBe(`/challenges/${challenge.id}`)
+    await user.click(practiceLink)
+    expect(await screen.findByRole('heading', { name: challenge.title, level: 1 })).toBeTruthy()
+
+    await user.click(screen.getByRole('link', { name: /All challenges/ }))
+    expect(await screen.findByText('Recommended practice')).toBeTruthy()
   })
 
   it('presents pricing honestly and handles unknown routes', async () => {
@@ -168,6 +188,30 @@ describe('functional frontend', () => {
     cleanup()
     renderApp('/not-a-real-page')
     expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeTruthy()
+  })
+
+  it('recalculates the learning path when a successful revision is saved', async () => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async (input) => {
+      if (String(input) === '/api/challenges') return Response.json(challenges)
+      throw new Error(`Unexpected request: ${String(input)}`)
+    }))
+    const { saveAttempt } = await import('../src/features/attempts/learningStore.js')
+
+    renderApp('/progress')
+    expect(await screen.findByRole('heading', { name: 'Complete your first challenge' })).toBeTruthy()
+
+    await act(async () => {
+      await saveAttempt(challenge.id, answers, evaluation([15, 4, 15, 15, 9]))
+    })
+    expect(await screen.findByRole('heading', { name: 'Target Audience Definition', level: 3 })).toBeTruthy()
+
+    await act(async () => {
+      await saveAttempt(challenge.id, answers, evaluation([15, 18, 15, 15, 3]))
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Validation Strategy', level: 3 })).toBeTruthy()
+    })
+    expect(screen.queryByRole('heading', { name: 'Target Audience Definition', level: 3 })).toBeNull()
   })
 
   it('shows a dedicated state when a challenge does not exist', async () => {

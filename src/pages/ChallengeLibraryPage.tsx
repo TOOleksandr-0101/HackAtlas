@@ -3,6 +3,7 @@ import type { ChallengeDifficulty } from "../../shared/types";
 import { ChallengeCard, difficultyLabels } from "../components/ChallengeCard";
 import { ErrorNotice, LoadingNotice } from "../components/Status";
 import { useChallenges } from "../hooks/useApi";
+import { useProgress } from "../hooks/useLearning";
 
 const filters = ["all", "beginner", "intermediate", "advanced"] as const;
 type DifficultyFilter = ChallengeDifficulty | "all";
@@ -10,6 +11,7 @@ type DifficultyFilter = ChallengeDifficulty | "all";
 export function ChallengeLibraryPage() {
   const [difficulty, setDifficulty] = useState<DifficultyFilter>("all");
   const { data, isLoading, error, retry } = useChallenges();
+  const { learningPath } = useProgress();
   const visible = data?.filter((challenge) => difficulty === "all" || challenge.difficulty === difficulty);
 
   return (
@@ -40,7 +42,13 @@ export function ChallengeLibraryPage() {
           </p>
           {visible.length > 0 && (
             <div className="challenge-grid">
-              {visible.map((challenge) => <ChallengeCard key={challenge.id} challenge={challenge} />)}
+              {visible.map((challenge) => (
+                <ChallengeCard
+                  key={challenge.id}
+                  challenge={challenge}
+                  recommended={learningPath?.challengeId === challenge.id}
+                />
+              ))}
             </div>
           )}
         </>

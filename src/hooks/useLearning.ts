@@ -3,6 +3,7 @@ import { readDraft } from '../features/attempts/learningStorage.js'
 import {
   getServerSnapshot, getSnapshot, saveAttempt, subscribe, updateDraft,
 } from '../features/attempts/learningStore.js'
+import { calculateLearningPath } from '../features/progress/learningPath.js'
 import { calculateProgress, compareAttempts } from '../features/progress/learningProgress.js'
 import type { SolutionAnswers } from '../../shared/types.js'
 
@@ -32,6 +33,9 @@ export function useDraft(challengeId: string) {
 
 export function useProgress() {
   const { state, storageError } = useLearningStore()
-  const progress = useMemo(() => calculateProgress(state.attempts), [state.attempts])
-  return { progress, storageError }
+  const { progress, learningPath } = useMemo(() => ({
+    progress: calculateProgress(state.attempts),
+    learningPath: calculateLearningPath(state.attempts),
+  }), [state.attempts])
+  return { progress, learningPath, storageError }
 }

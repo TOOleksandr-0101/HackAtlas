@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { criterionKeys, criterionLabels } from "../../shared/schemas";
 import { AttemptComparison, ScoreChange } from "../components/AttemptComparison";
+import { LearningPathCard } from "../components/LearningPathCard";
 import { ErrorNotice } from "../components/Status";
 import { useChallenges } from "../hooks/useApi";
 import { useProgress } from "../hooks/useLearning";
@@ -22,7 +23,7 @@ function scoreLabel(value: number | null) {
 }
 
 export function ProgressPage() {
-  const { progress, storageError } = useProgress();
+  const { progress, learningPath, storageError } = useProgress();
   const { data: challenges, error: challengeError, retry: retryChallenges } = useChallenges();
   const titles = new Map(challenges?.map((challenge) => [challenge.id, challenge.title]));
   const { criterionAverages } = progress;
@@ -61,6 +62,12 @@ export function ProgressPage() {
             <Metric label="Best score" value={scoreLabel(progress.bestScore)} />
             <Metric label="Average score" value={scoreLabel(progress.averageScore)} />
           </dl>
+          {learningPath && (
+            <LearningPathCard
+              learningPath={learningPath}
+              challengeTitle={challengeTitle(learningPath.challengeId)}
+            />
+          )}
           <div className="progress-grid">
             {criterionAverages && (
               <section className="card workspace-panel" aria-labelledby="skills-title">

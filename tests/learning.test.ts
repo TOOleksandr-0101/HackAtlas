@@ -3,6 +3,7 @@ import type { Attempt, EvaluationResult, SolutionAnswers } from '../shared/types
 import {
   addAttempt, emptyLearningState, LEARNING_STORAGE_KEY, parseLearningState, readDraft,
 } from '../src/features/attempts/learningStorage.js'
+import { calculateLearningPath } from '../src/features/progress/learningPath.js'
 import { calculateProgress, compareAttempts } from '../src/features/progress/learningProgress.js'
 
 const challengeId = 'household-food-waste'
@@ -40,6 +41,49 @@ const attempt = (attemptNumber: number, feedback: EvaluationResult): Attempt => 
 })
 const first = attempt(1, evaluation(12, 8))
 const revision = attempt(2, evaluation(9, 8))
+
+type Scores = readonly [number, number, number, number, number]
+
+function scoredEvaluation(scores: Scores): EvaluationResult {
+  const criterion = { score: 10, explanation: 'The main idea is clear.', evidence: [], suggestions: ['Add detail.'] }
+  return {
+    totalScore: scores.reduce((total, score) => total + score, 0),
+    criteria: {
+      problemUnderstanding: { ...criterion, score: scores[0] },
+      targetAudience: { ...criterion, score: scores[1] },
+      solutionQuality: { ...criterion, score: scores[2] },
+      mvpFeasibility: { ...criterion, score: scores[3] },
+      validationStrategy: { ...criterion, score: scores[4] },
+    },
+    strengths: ['Defined the audience.', 'Named an outcome.', 'Proposed a pilot.'],
+    weaknesses: ['No recruiting plan.', 'No comparison group.', 'No success threshold.'],
+    nextSteps: ['Plan recruiting.', 'Add a comparison group.', 'Define a success threshold.'],
+    summary: 'Specify a measurable threshold for your pilot.',
+  }
+}
+
+function pathAttempt({
+  challengeId: pathChallengeId,
+  scores,
+  attemptNumber = 1,
+  createdAt = `2026-11-14T19:0${attemptNumber}:00.000Z`,
+  id = `${pathChallengeId}-${attemptNumber}`,
+}: {
+  challengeId: string
+  scores: Scores
+  attemptNumber?: number
+  createdAt?: string
+  id?: string
+}): Attempt {
+  return {
+    id,
+    challengeId: pathChallengeId,
+    attemptNumber,
+    createdAt,
+    answers,
+    evaluation: scoredEvaluation(scores),
+  }
+}
 
 describe('learning storage', () => {
   it('recovers from damaged JSON and unsupported storage versions', () => {
@@ -120,6 +164,119 @@ describe('learning progress', () => {
       recentAttempts: [],
       history: [],
     })
+  })
+})
+
+describe('personalized learning path', () => {
+  it('returns no recommendation without evaluated attempts', () => {
+    expect(calculateLearningPath([])).toBeNull()
+  })
+
+  it('builds an actionable recommendation from a single attempt', () => {
+    const result = calculateLearningPath([
+      pathAttempt({ challengeId: 'food-waste', scores: [12, 8, 14, 16, 10] }),
+    ])
+
+    expect(result).toMatchObject({
+      skill: 'targetAudience',
+      score: 8,
+      challengeId: 'food-waste',
+      practiceTitle: 'Narrow the first customer segment',
+    })
+    expect(result?.description).toMatch(/urgent need/i)
+  })
+
+  it('uses only the latest attempt per challenge even when input is out of order', () => {
+    const firstAttempt = pathAttempt({
+      challengeId: 'food-waste', attemptNumber: 1, scores: [1, 20, 20, 20, 20],
+    })
+    const latestAttempt = pathAttempt({
+      challengeId: 'food-waste', attemptNumber: 2, scores: [20, 20, 20, 20, 4],
+    })
+
+    expect(calculateLearningPath([firstAttempt, latestAttempt])).toMatchObject({
+      skill: 'validationStrategy', score: 4, challengeId: 'food-waste',
+    })
+  })
+
+  it('averages the five skills across the latest attempts for different challenges', () => {
+    const result = calculateLearningPath([
+      pathAttempt({ challengeId: 'food-waste', scores: [9, 12, 16, 16, 18] }),
+      pathAttempt({ challengeId: 'late-payments', scores: [13, 4, 18, 16, 18] }),
+    ])
+
+    expect(result).toMatchObject({
+      skill: 'targetAudience', score: 8, challengeId: 'late-payments',
+    })
+  })
+
+  it('breaks skill and challenge ties deterministically regardless of input order', () => {
+    const alpha = pathAttempt({ challengeId: 'alpha-challenge', scores: [6, 6, 15, 15, 15] })
+    const zeta = pathAttempt({ challengeId: 'zeta-challenge', scores: [6, 6, 15, 15, 15] })
+    const forward = calculateLearningPath([alpha, zeta])
+    const reversed = calculateLearningPath([zeta, alpha])
+
+    expect(forward).toEqual(reversed)
+    expect(forward).toMatchObject({
+      skill: 'problemUnderstanding', score: 6, challengeId: 'alpha-challenge',
+    })
+  })
+
+  it('selects the weakest average rather than the lowest individual score', () => {
+    const result = calculateLearningPath([
+      pathAttempt({ challengeId: 'food-waste', scores: [0, 10, 20, 20, 20] }),
+      pathAttempt({ challengeId: 'late-payments', scores: [20, 8, 20, 20, 20] }),
+    ])
+
+    expect(result).toMatchObject({
+      skill: 'targetAudience', score: 9, challengeId: 'late-payments',
+    })
+  })
+
+  it('recommends the attempted challenge with the lowest score in the weakest skill', () => {
+    const result = calculateLearningPath([
+      pathAttempt({ challengeId: 'food-waste', scores: [18, 7, 18, 18, 18] }),
+      pathAttempt({ challengeId: 'late-payments', scores: [18, 3, 18, 18, 18] }),
+      pathAttempt({ challengeId: 'event-no-shows', scores: [18, 11, 18, 18, 18] }),
+    ])
+
+    expect(result).toMatchObject({
+      skill: 'targetAudience', score: 7, challengeId: 'late-payments',
+    })
+  })
+
+  it('updates the recommendation after a successful revision', () => {
+    const foodFirst = pathAttempt({
+      challengeId: 'food-waste', attemptNumber: 1, scores: [15, 4, 15, 15, 9],
+    })
+    const freelancer = pathAttempt({
+      challengeId: 'late-payments', scores: [15, 8, 15, 15, 8],
+    })
+    const beforeRevision = calculateLearningPath([foodFirst, freelancer])
+
+    const foodRevision = pathAttempt({
+      challengeId: 'food-waste', attemptNumber: 2, scores: [15, 18, 15, 15, 16],
+    })
+    const afterRevision = calculateLearningPath([foodRevision, freelancer, foodFirst])
+
+    expect(beforeRevision).toMatchObject({
+      skill: 'targetAudience', score: 6, challengeId: 'food-waste',
+    })
+    expect(afterRevision).toMatchObject({
+      skill: 'validationStrategy', score: 12, challengeId: 'late-payments',
+    })
+  })
+
+  it.each([
+    ['problemUnderstanding', [1, 20, 20, 20, 20], 'Map the problem moment', /context|frequency|consequence/i],
+    ['targetAudience', [20, 1, 20, 20, 20], 'Narrow the first customer segment', /urgent need/i],
+    ['solutionQuality', [20, 20, 1, 20, 20], 'Trace pain to product action', /user pain/i],
+    ['mvpFeasibility', [20, 20, 20, 1, 20], 'Cut the MVP to three essentials', /exclude/i],
+    ['validationStrategy', [20, 20, 20, 20, 1], 'Design a measurable experiment', /hypothesis|metric|method/i],
+  ] as const)('provides criterion-specific practice for %s', (skill, scores, title, description) => {
+    const result = calculateLearningPath([pathAttempt({ challengeId: 'practice-case', scores })])
+    expect(result).toMatchObject({ skill, practiceTitle: title })
+    expect(result?.description).toMatch(description)
   })
 })
 
