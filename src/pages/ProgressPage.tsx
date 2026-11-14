@@ -23,7 +23,7 @@ function scoreLabel(value: number | null) {
 
 export function ProgressPage() {
   const { progress, storageError } = useProgress();
-  const { data: challenges } = useChallenges();
+  const { data: challenges, error: challengeError, retry: retryChallenges } = useChallenges();
   const titles = new Map(challenges?.map((challenge) => [challenge.id, challenge.title]));
   const { criterionAverages } = progress;
   function challengeTitle(id: string) {
@@ -37,6 +37,14 @@ export function ProgressPage() {
         <p>Your evaluated attempts and scores saved in this browser.</p>
       </header>
       {storageError && <ErrorNotice message={storageError} />}
+      {challengeError && (
+        <ErrorNotice
+          message={progress.totalAttempts === 0
+            ? "Challenge titles could not be refreshed. Try again to load the current library."
+            : "Challenge titles could not be refreshed. Your saved progress is still available below."}
+          retry={retryChallenges}
+        />
+      )}
       {progress.totalAttempts === 0 ? (
         <section className="card empty-state">
           <h2>Complete your first challenge</h2>

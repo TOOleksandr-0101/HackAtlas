@@ -64,11 +64,24 @@ export function ChallengeWorkspacePage() {
   const { id = "" } = useParams();
   const { data, error, isLoading, retry } = useChallenge(id);
 
+  if (error?.code === "CHALLENGE_NOT_FOUND") {
+    return (
+      <div className="page wrap">
+        <Link to="/challenges" className="back-link">← All challenges</Link>
+        <section className="card empty-state" aria-labelledby="challenge-not-found-title">
+          <h1 id="challenge-not-found-title">Challenge not found</h1>
+          <p>This challenge does not exist or is no longer available.</p>
+          <Link to="/challenges" className="button button--primary">Browse challenges</Link>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="page wrap">
       <Link to="/challenges" className="back-link">← All challenges</Link>
       {isLoading && <LoadingNotice message="Loading challenge…" />}
-      {error && <ErrorNotice message={error.message} retry={error.status === 404 ? undefined : retry} />}
+      {error && <ErrorNotice message={error.message} retry={retry} />}
       {data && data.id === id && <ChallengeWorkspace key={id} challenge={data} />}
     </div>
   );

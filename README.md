@@ -35,4 +35,5 @@ npm run preview   # production client preview with the local API middleware
 
 - [API contract](docs/API_CONTRACT.md)
 - [Frontend handoff](docs/FRONTEND_HANDOFF.md)
+- [UI/UX handoff](docs/UI_UX_HANDOFF.md)
 - [Architecture](docs/ARCHITECTURE.md)

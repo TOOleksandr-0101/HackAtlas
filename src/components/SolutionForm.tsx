@@ -87,14 +87,17 @@ export function SolutionForm({ challenge, initialAnswers, isRevision, onSaved, o
         <p>{filledCount} of {answerKeys.length} answered</p>
       </div>
       <progress value={filledCount} max={answerKeys.length} aria-label="Answered questions" />
-      <form onSubmit={submit} noValidate>
+      <form onSubmit={submit} noValidate aria-busy={isSubmitting}>
         <fieldset disabled={isSubmitting}>
           {answerKeys.map((key) => {
             const fieldError = fieldErrors[key] ?? error?.fieldErrors?.[`answers.${key}`];
             return (
               <div className="form-field" key={key}>
                 <label htmlFor={`answer-${key}`}>{answerLabels[key]}</label>
-                <p className="field-hint" id={`hint-${key}`}>{fieldHints[key]}</p>
+                <div className="field-guidance">
+                  <p className="field-hint" id={`hint-${key}`}>{fieldHints[key]}</p>
+                  <p className="character-count" id={`count-${key}`}>{answers[key].length}/{MAX_ANSWER_LENGTH}</p>
+                </div>
                 <textarea
                   id={`answer-${key}`}
                   name={key}
@@ -103,7 +106,7 @@ export function SolutionForm({ challenge, initialAnswers, isRevision, onSaved, o
                   maxLength={MAX_ANSWER_LENGTH}
                   value={answers[key]}
                   aria-invalid={Boolean(fieldError)}
-                  aria-describedby={`hint-${key}${fieldError ? ` error-${key}` : ""}`}
+                  aria-describedby={`hint-${key} count-${key}${fieldError ? ` error-${key}` : ""}`}
                   onChange={(event) => changeAnswer(key, event.target.value)}
                 />
                 {fieldError && <p className="field-error" id={`error-${key}`}>{fieldError}</p>}
@@ -124,7 +127,7 @@ export function SolutionForm({ challenge, initialAnswers, isRevision, onSaved, o
           )}
         </div>
         <p className="field-hint" role="status">
-          {isSubmitting ? "Reviewing your answers against the challenge rubric." : "Drafts are saved in this browser. Submitted answers are sent to OpenRouter for evaluation."}
+          {isSubmitting ? "Reviewing your answers against the challenge rubric." : "Draft changes are saved automatically in this browser. Submitted answers are sent to OpenRouter for evaluation."}
         </p>
       </form>
     </section>

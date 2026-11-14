@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { LoadingNotice } from "../components/Status";
 import { useChallenges } from "../hooks/useApi";
 
 const steps = [
@@ -17,7 +18,7 @@ const steps = [
 ];
 
 export function LandingPage() {
-  const { data: challenges } = useChallenges();
+  const { data: challenges, error, isLoading, retry } = useChallenges();
   const example = challenges?.find((challenge) => challenge.difficulty === "beginner") ?? challenges?.[0];
 
   return (
@@ -34,22 +35,37 @@ export function LandingPage() {
           </Link>
           <p className="hero__access">Free practice · No account needed</p>
         </div>
-        <div className="hero__preview">
-          <p className="hero__preview-label">Example challenge</p>
-          <h2>{example?.title ?? "Reduce Household Food Waste"}</h2>
-          <p>
-            {example
-              ? example.learningObjectives[0]
-              : "Design a digital product that helps US households use more of the food they buy."}
-          </p>
-          <ul className="hero__preview-list">
-            <li>Define the problem and audience</li>
-            <li>Scope three essential features</li>
-            <li>Decide how to validate your idea</li>
-          </ul>
-          <Link to={example ? `/challenges/${example.id}` : "/challenges"} className="hero__preview-link">
-            View the brief <span aria-hidden="true">→</span>
-          </Link>
+        <div className="hero__preview" aria-live="polite">
+          {isLoading ? (
+            <LoadingNotice message="Loading an example challenge…" />
+          ) : error ? (
+            <div className="hero__preview-status" role="alert">
+              <p className="hero__preview-label">Example unavailable</p>
+              <h2>Challenges could not be loaded</h2>
+              <p>{error.message}</p>
+              <button className="button button--secondary" type="button" onClick={retry}>Try again</button>
+            </div>
+          ) : example ? (
+            <>
+              <p className="hero__preview-label">Example challenge</p>
+              <h2>{example.title}</h2>
+              <p>{example.learningObjectives[0]}</p>
+              <ul className="hero__preview-list">
+                <li>Define the problem and audience</li>
+                <li>Scope three essential features</li>
+                <li>Decide how to validate your idea</li>
+              </ul>
+              <Link to={`/challenges/${example.id}`} className="hero__preview-link">
+                View the brief <span aria-hidden="true">→</span>
+              </Link>
+            </>
+          ) : (
+            <div className="hero__preview-status">
+              <p className="hero__preview-label">Challenge library</p>
+              <h2>No challenges are available</h2>
+              <p>Please check again later.</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -71,7 +87,10 @@ export function LandingPage() {
             <h2 id="access-title">Free Plan</h2>
             <p>Practice a case, get an AI evaluation, and revise your submission.</p>
           </div>
-          <Link to="/challenges" className="button button--primary">Browse challenges</Link>
+          <div className="form-actions">
+            <Link to="/challenges" className="button button--primary">Browse challenges</Link>
+            <Link to="/pricing" className="button button--secondary">Compare plans</Link>
+          </div>
         </div>
       </section>
     </>
