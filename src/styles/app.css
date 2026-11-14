@@ -267,6 +267,68 @@ main { flex: 1; }
 .field-guidance { align-items: start; display: flex; gap: .5rem 1rem; justify-content: space-between; }
 .character-count { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
 .form-panel > progress { margin-top: .7rem; }
+.revision-checklist {
+  background: #f3f8f1;
+  border: 1px solid #c6d8c8;
+  border-radius: .7rem;
+  margin-top: 1rem;
+  padding: 1rem;
+}
+.revision-checklist__header {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem 1rem;
+  justify-content: space-between;
+}
+.revision-checklist__eyebrow {
+  color: var(--accent);
+  font-size: .73rem;
+  font-weight: 800;
+  letter-spacing: .07em;
+  margin-bottom: .2rem;
+  text-transform: uppercase;
+}
+.revision-checklist__count {
+  color: #1e5e3c;
+  font-size: .86rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+}
+.revision-checklist__focus { color: var(--muted); font-size: .9rem; margin-top: .7rem; }
+.revision-checklist__focus strong { color: #294638; }
+.revision-checklist > progress { margin-top: .65rem; }
+.revision-checklist__note { color: var(--muted); font-size: .84rem; margin-top: .65rem; }
+.revision-checklist__items {
+  display: grid;
+  gap: .5rem;
+  list-style: none;
+  margin: .85rem 0 0;
+  padding: 0;
+}
+.revision-checklist__item {
+  background: #fff;
+  border: 1px solid #d3ded5;
+  border-radius: .55rem;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.revision-checklist__item--reviewed { background: #edf5ed; border-color: #93b29c; }
+.revision-checklist__item label {
+  align-items: start;
+  cursor: pointer;
+  display: grid;
+  gap: .65rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-height: 2.75rem;
+  padding: .65rem .7rem;
+}
+.revision-checklist__item input {
+  accent-color: var(--accent);
+  height: 1.05rem;
+  margin: .18rem 0 0;
+  width: 1.05rem;
+}
+.revision-checklist__item span { overflow-wrap: anywhere; }
 progress {
   appearance: none;
   background: #eaf0e9;
@@ -440,6 +502,7 @@ textarea:disabled { opacity: .7; }
   .wrap { width: calc(100% - 2rem); }
   .steps, .challenge-grid { grid-template-columns: minmax(0, 1fr); }
   .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .revision-checklist__header { align-items: start; flex-direction: column; }
   .learning-path-card__practice .button { width: 100%; }
   .learning-path-card__skill { align-items: start; flex-direction: column; }
   .pricing-grid { grid-template-columns: minmax(0, 1fr); }

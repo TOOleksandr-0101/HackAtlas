@@ -3,6 +3,7 @@ import type { Attempt, EvaluationResult, SolutionAnswers } from '../shared/types
 import {
   addAttempt, emptyLearningState, LEARNING_STORAGE_KEY, parseLearningState, readDraft,
 } from '../src/features/attempts/learningStorage.js'
+import { getRevisionReminders } from '../src/features/attempts/revisionChecklist.js'
 import { calculateLearningPath } from '../src/features/progress/learningPath.js'
 import { calculateProgress, compareAttempts } from '../src/features/progress/learningProgress.js'
 
@@ -277,6 +278,28 @@ describe('personalized learning path', () => {
     const result = calculateLearningPath([pathAttempt({ challengeId: 'practice-case', scores })])
     expect(result).toMatchObject({ skill, practiceTitle: title })
     expect(result?.description).toMatch(description)
+  })
+})
+
+describe('revision reminders', () => {
+  it('uses the canonical weakest criterion and returns at most three existing suggestions', () => {
+    const feedback = scoredEvaluation([5, 5, 12, 13, 14])
+    feedback.criteria.problemUnderstanding.suggestions = [
+      'Clarify the problem context.',
+      'Describe how often it happens.',
+      'Name the consequence.',
+      'This fourth suggestion must not be shown.',
+    ]
+    feedback.criteria.targetAudience.suggestions = ['This tied criterion must not win.']
+
+    expect(getRevisionReminders(feedback)).toEqual({
+      criterion: 'problemUnderstanding',
+      suggestions: [
+        'Clarify the problem context.',
+        'Describe how often it happens.',
+        'Name the consequence.',
+      ],
+    })
   })
 })
 

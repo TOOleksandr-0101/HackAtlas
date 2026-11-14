@@ -177,6 +177,73 @@ describe('functional frontend', () => {
     expect(await screen.findByText('Recommended practice')).toBeTruthy()
   })
 
+  it('turns the weakest criterion suggestions into local revision reminders', async () => {
+    const focusedEvaluation = evaluation([15, 6, 12, 13, 14])
+    focusedEvaluation.criteria.problemUnderstanding.suggestions = ['Do not show this stronger-criterion suggestion.']
+    focusedEvaluation.criteria.targetAudience.suggestions = [
+      'Name the first customer segment.',
+      'Describe the behavior its members share.',
+      'Explain why this segment should be served first.',
+    ]
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async (input) => {
+      const path = String(input)
+      if (path === `/api/challenges/${challenge.id}`) return Response.json(challenge)
+      if (path === '/api/challenges') return Response.json(challenges)
+      throw new Error(`Unexpected request: ${path}`)
+    }))
+    const { saveAttempt } = await import('../src/features/attempts/learningStore.js')
+    await act(async () => {
+      await saveAttempt(challenge.id, answers, focusedEvaluation)
+    })
+    const user = userEvent.setup()
+
+    renderApp(`/challenges/${challenge.id}`)
+    expect(await screen.findByRole('heading', { name: 'AI evaluation' })).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Revision reminders' })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Improve My Solution' }))
+    const checklist = screen.getByRole('region', { name: 'Revision reminders' })
+    const checklistHeading = within(checklist).getByRole('heading', { name: 'Revision reminders', level: 3 })
+    expect(document.activeElement).toBe(checklistHeading)
+    expect(within(checklist).getByText(/Lowest-scoring criterion:/).textContent).toContain('Target Audience Definition')
+    expect(within(checklist).getByText(/does not prove your solution has improved/i)).toBeTruthy()
+    expect(screen.queryByText('Do not show this stronger-criterion suggestion.')).toBeNull()
+
+    const reminders = focusedEvaluation.criteria.targetAudience.suggestions
+      .map((suggestion) => within(checklist).getByRole('checkbox', { name: suggestion }))
+    expect(reminders).toHaveLength(3)
+    expect(within(checklist).getByRole('status').textContent).toBe('0 of 3 reviewed')
+    const reminderProgress = within(checklist).getByRole('progressbar', {
+      name: 'Revision reminders reviewed: 0 of 3',
+    }) as HTMLProgressElement
+    expect(reminderProgress.value).toBe(0)
+    expect(reminderProgress.max).toBe(3)
+
+    const problemField = screen.getByLabelText(answerLabels.problem)
+    expect(checklist.compareDocumentPosition(problemField) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await user.click(reminders[0]!)
+    await user.click(reminders[1]!)
+    expect(within(checklist).getByRole('status').textContent).toBe('2 of 3 reviewed')
+    await user.click(reminders[0]!)
+    expect(within(checklist).getByRole('status').textContent).toBe('1 of 3 reviewed')
+
+    await user.type(problemField, ' More context.')
+    expect((within(checklist).getByRole('checkbox', { name: focusedEvaluation.criteria.targetAudience.suggestions[1] }) as HTMLInputElement).checked).toBe(true)
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(LEARNING_STORAGE_KEY) ?? '{}')
+      expect(stored.drafts?.[challenge.id]?.problem).toContain('More context.')
+    })
+
+    await user.click(screen.getByRole('button', { name: 'View last feedback' }))
+    expect(await screen.findByRole('heading', { name: 'AI evaluation' })).toBe(document.activeElement)
+    await user.click(screen.getByRole('button', { name: 'Improve My Solution' }))
+    const reopenedChecklist = screen.getByRole('region', { name: 'Revision reminders' })
+    expect(within(reopenedChecklist).getByRole('status').textContent).toBe('0 of 3 reviewed')
+    for (const checkbox of within(reopenedChecklist).getAllByRole('checkbox')) {
+      expect((checkbox as HTMLInputElement).checked).toBe(false)
+    }
+  })
+
   it('presents pricing honestly and handles unknown routes', async () => {
     renderApp('/pricing')
     expect(screen.getByRole('heading', { name: 'Free' })).toBeTruthy()

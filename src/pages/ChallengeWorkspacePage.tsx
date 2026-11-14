@@ -16,6 +16,7 @@ function ChallengeWorkspace({ challenge }: { challenge: Challenge }) {
   const hasRevision = Boolean(draft && latest && answerKeys.some((key) => draft[key].trim() !== latest.answers[key]));
   const [mode, setMode] = useState<"edit" | "review">(() => hasRevision ? "edit" : "review");
   const [focusFeedback, setFocusFeedback] = useState(false);
+  const [focusRevisionChecklist, setFocusRevisionChecklist] = useState(false);
   const isEditing = !latest || mode === "edit";
 
   return (
@@ -36,11 +37,18 @@ function ChallengeWorkspace({ challenge }: { challenge: Challenge }) {
             challenge={challenge}
             initialAnswers={draft ?? latest?.answers ?? emptyAnswers}
             isRevision={Boolean(latest)}
+            revisionAttempt={latest}
+            focusRevisionChecklist={focusRevisionChecklist}
             onSaved={() => {
+              setFocusRevisionChecklist(false);
               setFocusFeedback(true);
               setMode("review");
             }}
-            onCancel={latest ? () => setMode("review") : undefined}
+            onCancel={latest ? () => {
+              setFocusRevisionChecklist(false);
+              setFocusFeedback(true);
+              setMode("review");
+            } : undefined}
           />
         ) : (
           <EvaluationFeedback
@@ -51,6 +59,7 @@ function ChallengeWorkspace({ challenge }: { challenge: Challenge }) {
             focusHeading={focusFeedback}
             onImprove={() => {
               setFocusFeedback(false);
+              setFocusRevisionChecklist(true);
               setMode("edit");
             }}
           />

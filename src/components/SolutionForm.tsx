@@ -1,8 +1,9 @@
 import { useRef, useState, type FormEvent } from "react";
 import { MAX_ANSWER_LENGTH, answerKeys, answerLabels, solutionAnswersSchema } from "../../shared/schemas";
-import type { AnswerKey, Challenge, SolutionAnswers } from "../../shared/types";
+import type { AnswerKey, Attempt, Challenge, SolutionAnswers } from "../../shared/types";
 import { useEvaluation } from "../hooks/useApi";
 import { useAttempts, useDraft } from "../hooks/useLearning";
+import { RevisionChecklist } from "./RevisionChecklist";
 import { ErrorNotice } from "./Status";
 
 const fieldHints: Record<AnswerKey, string> = {
@@ -17,11 +18,21 @@ interface SolutionFormProps {
   challenge: Challenge;
   initialAnswers: SolutionAnswers;
   isRevision: boolean;
+  revisionAttempt?: Attempt | null;
+  focusRevisionChecklist?: boolean;
   onSaved: () => void;
   onCancel?: () => void;
 }
 
-export function SolutionForm({ challenge, initialAnswers, isRevision, onSaved, onCancel }: SolutionFormProps) {
+export function SolutionForm({
+  challenge,
+  initialAnswers,
+  isRevision,
+  revisionAttempt,
+  focusRevisionChecklist = false,
+  onSaved,
+  onCancel,
+}: SolutionFormProps) {
   const { evaluate, error, resetError } = useEvaluation();
   const { saveAttempt } = useAttempts(challenge.id);
   const { updateDraft } = useDraft(challenge.id);
@@ -87,6 +98,13 @@ export function SolutionForm({ challenge, initialAnswers, isRevision, onSaved, o
         <p>{filledCount} of {answerKeys.length} answered</p>
       </div>
       <progress value={filledCount} max={answerKeys.length} aria-label="Answered questions" />
+      {revisionAttempt ? (
+        <RevisionChecklist
+          key={revisionAttempt.id}
+          evaluation={revisionAttempt.evaluation}
+          focusHeading={focusRevisionChecklist}
+        />
+      ) : null}
       <form onSubmit={submit} noValidate aria-busy={isSubmitting}>
         <fieldset disabled={isSubmitting}>
           {answerKeys.map((key) => {
