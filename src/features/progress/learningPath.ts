@@ -1,5 +1,6 @@
 import { criterionKeys } from '../../../shared/schemas.js'
 import type { Attempt, CriterionKey } from '../../../shared/types.js'
+import { calculateSkillProgress } from './learningProgress.js'
 
 export type LearningPath = Readonly<{
   skill: CriterionKey
@@ -34,35 +35,10 @@ const practiceRecommendations: Record<CriterionKey, PracticeRecommendation> = {
   },
 }
 
-function isLaterAttempt(candidate: Attempt, current: Attempt): boolean {
-  if (candidate.attemptNumber !== current.attemptNumber) {
-    return candidate.attemptNumber > current.attemptNumber
-  }
-
-  const candidateTime = Date.parse(candidate.createdAt)
-  const currentTime = Date.parse(current.createdAt)
-  if (candidateTime !== currentTime) return candidateTime > currentTime
-  return candidate.id < current.id
-}
-
-function latestAttemptsByChallenge(attempts: readonly Attempt[]): Attempt[] {
-  const latest = new Map<string, Attempt>()
-  for (const attempt of attempts) {
-    const current = latest.get(attempt.challengeId)
-    if (!current || isLaterAttempt(attempt, current)) latest.set(attempt.challengeId, attempt)
-  }
-  return [...latest.values()]
-}
-
 export function calculateLearningPath(attempts: readonly Attempt[]): LearningPath | null {
-  if (attempts.length === 0) return null
-
-  const latestAttempts = latestAttemptsByChallenge(attempts)
-  const averages = Object.fromEntries(criterionKeys.map((key) => [
-    key,
-    latestAttempts.reduce((total, attempt) => total + attempt.evaluation.criteria[key].score, 0)
-      / latestAttempts.length,
-  ])) as Record<CriterionKey, number>
+  const skillProgress = calculateSkillProgress(attempts)
+  if (!skillProgress) return null
+  const { latestAttempts, averages } = skillProgress
 
   let weakestSkill: CriterionKey = criterionKeys[0]
   for (const key of criterionKeys.slice(1)) {

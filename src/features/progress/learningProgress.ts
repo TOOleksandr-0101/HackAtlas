@@ -21,6 +21,35 @@ export function compareAttempts(fromAttempt: Attempt, toAttempt: Attempt): Attem
   }
 }
 
+function isLaterAttempt(candidate: Attempt, current: Attempt): boolean {
+  if (candidate.attemptNumber !== current.attemptNumber) {
+    return candidate.attemptNumber > current.attemptNumber
+  }
+
+  const candidateTime = Date.parse(candidate.createdAt)
+  const currentTime = Date.parse(current.createdAt)
+  if (candidateTime !== currentTime) return candidateTime > currentTime
+  return candidate.id < current.id
+}
+
+export function calculateSkillProgress(attempts: readonly Attempt[]) {
+  if (attempts.length === 0) return null
+
+  const latestByChallenge = new Map<string, Attempt>()
+  for (const attempt of attempts) {
+    const current = latestByChallenge.get(attempt.challengeId)
+    if (!current || isLaterAttempt(attempt, current)) latestByChallenge.set(attempt.challengeId, attempt)
+  }
+  const latestAttempts = [...latestByChallenge.values()]
+  const averages = Object.fromEntries(criterionKeys.map((key) => [
+    key,
+    latestAttempts.reduce((total, attempt) => total + attempt.evaluation.criteria[key].score, 0)
+      / latestAttempts.length,
+  ])) as Record<CriterionKey, number>
+
+  return { latestAttempts, averages }
+}
+
 export type LearningProgress = {
   challengesAttempted: number
   challengesCompleted: number
@@ -37,13 +66,6 @@ export type LearningProgress = {
 export function calculateProgress(attempts: readonly Attempt[]): LearningProgress {
   const latestByChallenge = new Map<string, Attempt>()
   const history: AttemptComparison[] = []
-  const criterionTotals: Record<CriterionKey, number> = {
-    problemUnderstanding: 0,
-    targetAudience: 0,
-    solutionQuality: 0,
-    mvpFeasibility: 0,
-    validationStrategy: 0,
-  }
   let total = 0
   let bestScore: number | null = null
 
@@ -54,13 +76,9 @@ export function calculateProgress(attempts: readonly Attempt[]): LearningProgres
     const score = attempt.evaluation.totalScore
     total += score
     bestScore = Math.max(bestScore ?? score, score)
-    for (const key of criterionKeys) criterionTotals[key] += attempt.evaluation.criteria[key].score
   }
 
   const count = attempts.length
-  const criterionAverages = count === 0 ? null : Object.fromEntries(
-    criterionKeys.map((key) => [key, criterionTotals[key] / count]),
-  ) as Record<CriterionKey, number>
 
   return {
     challengesAttempted: latestByChallenge.size,
@@ -69,7 +87,7 @@ export function calculateProgress(attempts: readonly Attempt[]): LearningProgres
     latestScore: attempts[0]?.evaluation.totalScore ?? null,
     bestScore,
     averageScore: count === 0 ? null : total / count,
-    criterionAverages,
+    criterionAverages: calculateSkillProgress(attempts)?.averages ?? null,
     recentAttempts: attempts.slice(0, 10),
     history: history.reverse(),
   }

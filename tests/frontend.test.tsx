@@ -93,7 +93,7 @@ describe('functional frontend', () => {
     expect(document.activeElement).toBe(screen.getByLabelText(answerLabels.problem))
 
     for (const key of answerKeys) {
-      await user.type(screen.getByLabelText(answerLabels[key]), answers[key])
+      fireEvent.change(screen.getByLabelText(answerLabels[key]), { target: { value: answers[key] } })
     }
     expect(screen.getByText(`${answers.problem.length}/2000`)).toBeTruthy()
     await waitFor(() => {
@@ -128,8 +128,7 @@ describe('functional frontend', () => {
     const revisedProblem = 'Households miss produce that becomes hidden after meal plans change.'
     const problemField = screen.getByLabelText(answerLabels.problem)
     expect((problemField as HTMLTextAreaElement).value).toBe(answers.problem)
-    await user.clear(problemField)
-    await user.type(problemField, revisedProblem)
+    fireEvent.change(problemField, { target: { value: revisedProblem } })
     await user.click(screen.getByRole('button', { name: 'Submit Solution' }))
 
     const comparisonHeading = await screen.findByRole('heading', { name: 'Attempt comparison' })
@@ -165,6 +164,8 @@ describe('functional frontend', () => {
     expect(learningProgress.max).toBe(20)
     expect(screen.getByRole('heading', { name: 'Map the problem moment', level: 3 })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Skill scores' })).toBeTruthy()
+    const skillProgress = screen.getByRole('progressbar', { name: 'Problem Understanding' }) as HTMLProgressElement
+    expect(skillProgress.value).toBe(learningProgress.value)
     expect(screen.getByRole('heading', { name: 'Recent attempts' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Revision history' })).toBeTruthy()
 
@@ -227,7 +228,7 @@ describe('functional frontend', () => {
     await user.click(reminders[0]!)
     expect(within(checklist).getByRole('status').textContent).toBe('1 of 3 reviewed')
 
-    await user.type(problemField, ' More context.')
+    fireEvent.change(problemField, { target: { value: `${answers.problem} More context.` } })
     expect((within(checklist).getByRole('checkbox', { name: focusedEvaluation.criteria.targetAudience.suggestions[1] }) as HTMLInputElement).checked).toBe(true)
     await waitFor(() => {
       const stored = JSON.parse(window.localStorage.getItem(LEARNING_STORAGE_KEY) ?? '{}')

@@ -135,7 +135,7 @@ describe('learning progress', () => {
     })
   })
 
-  it('aggregates all attempts and compares only consecutive attempts within a challenge', () => {
+  it('aggregates total scores across attempts and skill scores across latest attempts', () => {
     const anotherChallenge = {
       ...attempt(1, evaluation(15, 15)), id: 'other-attempt', challengeId: 'freelancer-late-payments',
     }
@@ -147,7 +147,7 @@ describe('learning progress', () => {
       latestScore: 47,
       bestScore: 60,
       averageScore: (47 + 60 + 50) / 3,
-      criterionAverages: { problemUnderstanding: 12, solutionQuality: 10 },
+      criterionAverages: { problemUnderstanding: 12, targetAudience: 11.5, solutionQuality: 10 },
       recentAttempts: [revision, anotherChallenge, first],
       history: [{ fromAttempt: first, toAttempt: revision, totalDelta: -3 }],
     })
@@ -195,8 +195,16 @@ describe('personalized learning path', () => {
       challengeId: 'food-waste', attemptNumber: 2, scores: [20, 20, 20, 20, 4],
     })
 
-    expect(calculateLearningPath([firstAttempt, latestAttempt])).toMatchObject({
+    const history = [firstAttempt, latestAttempt]
+    expect(calculateLearningPath(history)).toMatchObject({
       skill: 'validationStrategy', score: 4, challengeId: 'food-waste',
+    })
+    expect(calculateProgress(history).criterionAverages).toEqual({
+      problemUnderstanding: 20,
+      targetAudience: 20,
+      solutionQuality: 20,
+      mvpFeasibility: 20,
+      validationStrategy: 4,
     })
   })
 
@@ -258,7 +266,8 @@ describe('personalized learning path', () => {
     const foodRevision = pathAttempt({
       challengeId: 'food-waste', attemptNumber: 2, scores: [15, 18, 15, 15, 16],
     })
-    const afterRevision = calculateLearningPath([foodRevision, freelancer, foodFirst])
+    const revisedAttempts = [foodRevision, freelancer, foodFirst]
+    const afterRevision = calculateLearningPath(revisedAttempts)
 
     expect(beforeRevision).toMatchObject({
       skill: 'targetAudience', score: 6, challengeId: 'food-waste',
@@ -266,6 +275,7 @@ describe('personalized learning path', () => {
     expect(afterRevision).toMatchObject({
       skill: 'validationStrategy', score: 12, challengeId: 'late-payments',
     })
+    expect(calculateProgress(revisedAttempts).criterionAverages?.validationStrategy).toBe(afterRevision?.score)
   })
 
   it.each([

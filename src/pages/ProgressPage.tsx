@@ -72,7 +72,7 @@ export function ProgressPage() {
             {criterionAverages && (
               <section className="card workspace-panel" aria-labelledby="skills-title">
                 <h2 id="skills-title">Skill scores</h2>
-                <p>Average scores by criterion across your attempts.</p>
+                <p>Average scores by criterion, using your latest evaluated attempt for each challenge.</p>
                 <ul className="skills-list">
                   {criterionKeys.map((key) => {
                     const score = criterionAverages[key];
