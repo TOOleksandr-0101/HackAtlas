@@ -52,12 +52,33 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   cleanup()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
 
 describe('functional frontend', () => {
+  it('shows the complete learning loop in an illustrative landing-page preview', async () => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async (input) => {
+      if (String(input) === '/api/challenges') return Response.json(challenges)
+      throw new Error(`Unexpected request: ${String(input)}`)
+    }))
+
+    renderApp('/')
+
+    expect(await screen.findByText('Example AI Feedback')).toBeTruthy()
+    expect(screen.getByText('Illustrative example')).toBeTruthy()
+    expect(screen.getByText('Weakest skill · 8/20')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Target Audience Definition' })).toBeTruthy()
+    expect(screen.getByText(/Define one reachable household segment/)).toBeTruthy()
+    expect(screen.getByText('14/20')).toBeTruthy()
+    expect(screen.getByText(/not a learner result/i)).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Try This Challenge' }).getAttribute('href'))
+      .toBe(`/challenges/${challenge.id}`)
+    expect(screen.queryByRole('link', { name: 'Pricing' })).toBeNull()
+  })
+
   it('preserves answers through failure, saves revisions, compares attempts, and updates progress', async () => {
     const firstEvaluation = evaluation([12, 12, 12, 12, 12])
     const secondEvaluation = evaluation([10, 13, 12, 12, 12])
@@ -106,11 +127,12 @@ describe('functional frontend', () => {
     fireEvent.submit(form)
     fireEvent.submit(form)
     expect(await screen.findByText('AI evaluation is temporarily unavailable.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Try Evaluation Again' })).toBeTruthy()
     expect(evaluationRequests).toBe(1)
     expect(evaluationRequestBodies).toEqual([{ challengeId: challenge.id, answers }])
     expect((screen.getByLabelText(answerLabels.problem) as HTMLTextAreaElement).value).toBe(answers.problem)
 
-    await user.click(screen.getByRole('button', { name: 'Submit Solution' }))
+    await user.click(screen.getByRole('button', { name: 'Try Evaluation Again' }))
     expect(await screen.findByRole('heading', { name: 'AI evaluation' })).toBeTruthy()
     expect(screen.getByText('60')).toBeTruthy()
     expect(screen.getByText(firstEvaluation.summary)).toBeTruthy()
@@ -151,6 +173,9 @@ describe('functional frontend', () => {
     const totalAttempts = screen.getByText('Total attempts').parentElement
     if (!totalAttempts) throw new Error('Total attempts metric was not rendered.')
     expect(within(totalAttempts).getByText('2')).toBeTruthy()
+    const revisedChallenges = screen.getByText('Challenges revised').parentElement
+    if (!revisedChallenges) throw new Error('Challenges revised metric was not rendered.')
+    expect(within(revisedChallenges).getByText('1')).toBeTruthy()
     const latestScore = screen.getByText('Latest score').parentElement
     if (!latestScore) throw new Error('Latest score metric was not rendered.')
     expect(within(latestScore).getByText('59/100')).toBeTruthy()
@@ -176,6 +201,51 @@ describe('functional frontend', () => {
 
     await user.click(screen.getByRole('link', { name: /All challenges/ }))
     expect(await screen.findByText('Recommended practice')).toBeTruthy()
+  })
+
+  it('explains a pending evaluation, tracks elapsed time, and cleans up its timer', async () => {
+    let resolveEvaluation: ((response: Response) => void) | undefined
+    const evaluationResponse = new Promise<Response>((resolve) => { resolveEvaluation = resolve })
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      const path = String(input)
+      if (path === `/api/challenges/${challenge.id}`) return Response.json(challenge)
+      if (path === '/api/challenges') return Response.json(challenges)
+      if (path === '/api/evaluate') return evaluationResponse
+      throw new Error(`Unexpected request: ${path}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderApp(`/challenges/${challenge.id}`)
+    expect(await screen.findByRole('heading', { name: challenge.title, level: 1 })).toBeTruthy()
+    for (const key of answerKeys) {
+      fireEvent.change(screen.getByLabelText(answerLabels[key]), { target: { value: answers[key] } })
+    }
+
+    const clearIntervalSpy = vi.spyOn(window, 'clearInterval')
+    vi.useFakeTimers()
+    const submit = screen.getByRole('button', { name: 'Submit Solution' })
+    const form = submit.closest('form')
+    if (!form) throw new Error('Solution form was not rendered.')
+    fireEvent.submit(form)
+    fireEvent.submit(form)
+
+    expect(screen.getByText('AI evaluation usually takes 10–30 seconds. Your draft is safe.')).toBeTruthy()
+    expect(screen.getByText('0s elapsed')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Evaluating solution…' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(fetchMock.mock.calls.filter(([input]) => String(input) === '/api/evaluate')).toHaveLength(1)
+
+    act(() => { vi.advanceTimersByTime(10_000) })
+    expect(screen.getByText('Still reviewing all five criteria…')).toBeTruthy()
+    expect(screen.getByText('10s elapsed')).toBeTruthy()
+
+    await act(async () => {
+      resolveEvaluation?.(Response.json(evaluation([12, 12, 12, 12, 12])))
+      await Promise.resolve()
+    })
+    vi.useRealTimers()
+
+    expect(await screen.findByRole('heading', { name: 'AI evaluation' })).toBeTruthy()
+    expect(clearIntervalSpy).toHaveBeenCalled()
   })
 
   it('turns the weakest criterion suggestions into local revision reminders', async () => {

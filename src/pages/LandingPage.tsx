@@ -46,19 +46,43 @@ export function LandingPage() {
               <button className="button button--secondary" type="button" onClick={retry}>Try again</button>
             </div>
           ) : example ? (
-            <>
-              <p className="hero__preview-label">Example challenge</p>
-              <h2>{example.title}</h2>
-              <p>{example.learningObjectives[0]}</p>
-              <ul className="hero__preview-list">
-                <li>Define the problem and audience</li>
-                <li>Scope three essential features</li>
-                <li>Decide how to validate your idea</li>
-              </ul>
-              <Link to={`/challenges/${example.id}`} className="hero__preview-link">
-                View the brief <span aria-hidden="true">→</span>
+            <article className="feedback-preview" aria-labelledby="example-feedback-title">
+              <header className="feedback-preview__header">
+                <div>
+                  <p className="hero__preview-label" id="example-feedback-title">Example AI Feedback</p>
+                  <p className="feedback-preview__challenge">{example.title}</p>
+                </div>
+                <span className="feedback-preview__badge">Illustrative example</span>
+              </header>
+
+              <div className="feedback-preview__score-row">
+                <p className="feedback-preview__score"><strong>58</strong><span>/100</span></p>
+                <div className="feedback-preview__skill">
+                  <p>Weakest skill · 8/20</p>
+                  <h2>Target Audience Definition</h2>
+                </div>
+              </div>
+
+              <div className="feedback-preview__suggestion">
+                <p>Next revision</p>
+                <strong>Define one reachable household segment and explain why this problem repeats for them.</strong>
+              </div>
+
+              <div className="feedback-preview__improvement">
+                <div>
+                  <p>After revising this skill</p>
+                  <span>One focused change creates visible progress.</span>
+                </div>
+                <p className="feedback-preview__delta">
+                  <span>8/20</span><span aria-hidden="true">→</span><strong>14/20</strong><small>+6</small>
+                </p>
+              </div>
+
+              <p className="feedback-preview__disclaimer">Illustrative learning-loop example, not a learner result.</p>
+              <Link to={`/challenges/${example.id}`} className="button button--secondary feedback-preview__cta">
+                Try This Challenge <span aria-hidden="true">→</span>
               </Link>
-            </>
+            </article>
           ) : (
             <div className="hero__preview-status">
               <p className="hero__preview-label">Challenge library</p>

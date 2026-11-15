@@ -52,7 +52,7 @@ export function calculateSkillProgress(attempts: readonly Attempt[]) {
 
 export type LearningProgress = {
   challengesAttempted: number
-  challengesCompleted: number
+  challengesRevised: number
   totalAttempts: number
   latestScore: number | null
   bestScore: number | null
@@ -65,11 +65,13 @@ export type LearningProgress = {
 // Attempts are stored in newest-first submission order.
 export function calculateProgress(attempts: readonly Attempt[]): LearningProgress {
   const latestByChallenge = new Map<string, Attempt>()
+  const attemptsByChallenge = new Map<string, number>()
   const history: AttemptComparison[] = []
   let total = 0
   let bestScore: number | null = null
 
   for (const attempt of [...attempts].reverse()) {
+    attemptsByChallenge.set(attempt.challengeId, (attemptsByChallenge.get(attempt.challengeId) ?? 0) + 1)
     const previous = latestByChallenge.get(attempt.challengeId)
     if (previous) history.push(compareAttempts(previous, attempt))
     latestByChallenge.set(attempt.challengeId, attempt)
@@ -82,7 +84,7 @@ export function calculateProgress(attempts: readonly Attempt[]): LearningProgres
 
   return {
     challengesAttempted: latestByChallenge.size,
-    challengesCompleted: latestByChallenge.size,
+    challengesRevised: [...attemptsByChallenge.values()].filter((attemptCount) => attemptCount >= 2).length,
     totalAttempts: count,
     latestScore: attempts[0]?.evaluation.totalScore ?? null,
     bestScore,

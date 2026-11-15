@@ -56,7 +56,7 @@ export function ProgressPage() {
         <>
           <dl className="metrics-grid">
             <Metric label="Challenges attempted" value={progress.challengesAttempted} />
-            <Metric label="Challenges completed" value={progress.challengesCompleted} />
+            <Metric label="Challenges revised" value={progress.challengesRevised} />
             <Metric label="Total attempts" value={progress.totalAttempts} />
             <Metric label="Latest score" value={scoreLabel(progress.latestScore)} />
             <Metric label="Best score" value={scoreLabel(progress.bestScore)} />

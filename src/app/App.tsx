@@ -26,7 +26,6 @@ export function App() {
           <nav aria-label="Main navigation" className="site-nav">
             <NavLink to="/challenges">Challenges</NavLink>
             <NavLink to="/progress">My progress</NavLink>
-            <NavLink to="/pricing">Pricing</NavLink>
           </nav>
         </div>
       </header>

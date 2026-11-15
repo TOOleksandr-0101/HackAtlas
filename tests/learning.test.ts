@@ -142,7 +142,7 @@ describe('learning progress', () => {
     const progress = calculateProgress([revision, anotherChallenge, first])
     expect(progress).toMatchObject({
       challengesAttempted: 2,
-      challengesCompleted: 2,
+      challengesRevised: 1,
       totalAttempts: 3,
       latestScore: 47,
       bestScore: 60,
@@ -153,10 +153,18 @@ describe('learning progress', () => {
     })
   })
 
+  it('does not count a challenge as revised after only one attempt', () => {
+    expect(calculateProgress([first])).toMatchObject({
+      challengesAttempted: 1,
+      challengesRevised: 0,
+      totalAttempts: 1,
+    })
+  })
+
   it('reports missing scores for a first-time visitor', () => {
     expect(calculateProgress([])).toEqual({
       challengesAttempted: 0,
-      challengesCompleted: 0,
+      challengesRevised: 0,
       totalAttempts: 0,
       latestScore: null,
       bestScore: null,

@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { MAX_ANSWER_LENGTH, answerKeys, answerLabels, solutionAnswersSchema } from "../../shared/schemas";
 import type { AnswerKey, Attempt, Challenge, SolutionAnswers } from "../../shared/types";
 import { useEvaluation } from "../hooks/useApi";
@@ -40,8 +40,20 @@ export function SolutionForm({
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<AnswerKey, string>>>({});
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [evaluationElapsedSeconds, setEvaluationElapsedSeconds] = useState(0);
   const pending = useRef(false);
   const filledCount = answerKeys.filter((key) => answers[key].trim()).length;
+
+  useEffect(() => {
+    if (!isSubmitting) return;
+
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      setEvaluationElapsedSeconds(Math.floor((Date.now() - startedAt) / 1_000));
+    }, 1_000);
+
+    return () => window.clearInterval(timer);
+  }, [isSubmitting]);
 
   function changeAnswer(key: AnswerKey, value: string) {
     const next = { ...answers, [key]: value };
@@ -73,6 +85,7 @@ export function SolutionForm({
     }
 
     pending.current = true;
+    setEvaluationElapsedSeconds(0);
     setIsSubmitting(true);
     try {
       const evaluation = await evaluate(challenge.id, result.data);
@@ -136,7 +149,7 @@ export function SolutionForm({
         {saveError && <ErrorNotice message={saveError} />}
         <div className="form-actions">
           <button type="submit" className="button button--primary" disabled={isSubmitting}>
-            {isSubmitting ? "Evaluating solution…" : "Submit Solution"}
+            {isSubmitting ? "Evaluating solution…" : error ? "Try Evaluation Again" : "Submit Solution"}
           </button>
           {onCancel && (
             <button type="button" className="button button--secondary" disabled={isSubmitting} onClick={onCancel}>
@@ -144,9 +157,25 @@ export function SolutionForm({
             </button>
           )}
         </div>
-        <p className="field-hint" role="status">
-          {isSubmitting ? "Reviewing your answers against the challenge rubric." : "Draft changes are saved automatically in this browser. Submitted answers are sent to OpenRouter for evaluation."}
-        </p>
+        {isSubmitting ? (
+          <div className="evaluation-status" role="status" aria-live="polite">
+            <span className="evaluation-status__pulse" aria-hidden="true" />
+            <div>
+              <p>
+                {evaluationElapsedSeconds >= 10
+                  ? "Still reviewing all five criteria…"
+                  : "AI evaluation usually takes 10–30 seconds. Your draft is safe."}
+              </p>
+              <span className="evaluation-status__elapsed" aria-hidden="true">
+                {evaluationElapsedSeconds}s elapsed
+              </span>
+            </div>
+          </div>
+        ) : (
+          <p className="field-hint" role="status">
+            Draft changes are saved automatically in this browser. Submitted answers are sent to OpenRouter for evaluation.
+          </p>
+        )}
       </form>
     </section>
   );
