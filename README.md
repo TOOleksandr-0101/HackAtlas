@@ -1,6 +1,6 @@
 # HackAtlas
 
-HackAtlas helps career switchers practice product development. Choose an original business case, draft a solution, submit it for AI feedback, revise, and compare attempts. The core workflow runs without an account. Drafts and progress stay in the current browser. Submitted answers are sent to OpenRouter for evaluation.
+HackAtlas helps career switchers practice product development. Choose an original business case, draft a solution, submit it for AI feedback, revise, and compare attempts. The core workflow runs without an account. Drafts and progress stay in the current browser.Submitted answers are sent to OpenRouter for evaluation.
 
 ## Run locally
 
